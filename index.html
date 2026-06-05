@@ -11,7 +11,10 @@
     <header class="flex flex-col gap-2">
       <h1 class="text-2xl font-semibold tracking-tight">Gothic Lock Solver</h1>
       <p class="text-slate-300">
-        Browser-only solver (BFS shortest path). Positions are <span class="font-mono">1..7</span>. Target is <span class="font-mono">all = 4</span>. Convention: <span class="font-mono">L = +1</span>, <span class="font-mono">R = -1</span>.
+        Browser-only solver (BFS shortest path) for the Gothic Remake chest / lock puzzle.
+        Each disk value is the <span class="font-mono">pin position</span> from left-to-right: <span class="font-mono">left-most = 1</span>, <span class="font-mono">right-most = 7</span>.
+        Target is <span class="font-mono">all = 4</span>. Convention: <span class="font-mono">L = +1</span>, <span class="font-mono">R = -1</span>.
+        Rule notation like <span class="font-mono">2+</span> means “disk 2 moves in the <span class="italic">same</span> direction”; <span class="font-mono">3-</span> means it moves in the <span class="italic">opposite</span> direction.
       </p>
     </header>
 
