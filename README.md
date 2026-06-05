@@ -10,9 +10,6 @@ Small browser-only solver for the Gothic Remake chest/lock puzzle.
 
 [https://nutschulk.github.io/GothicRemakeChestSolver/](https://nutschulk.github.io/GothicRemakeChestSolver/)
 
-> If you kept the file name instead of renaming to `index.html`, use:
-> [https://nutschulk.github.io/GothicRemakeChestSolver/gothic-lock-solver.html](https://nutschulk.github.io/GothicRemakeChestSolver/gothic-lock-solver.html)
-
 ## How to use
 
 ### 1) Choose number of disks
