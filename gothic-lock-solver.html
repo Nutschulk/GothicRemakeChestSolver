@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gothic Lock Solver (BFS)</title>
+  <script src="https://cdn.tailwindcss.com/3.4.13"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+  <div class="max-w-5xl mx-auto p-6">
+    <header class="flex flex-col gap-2">
+      <h1 class="text-2xl font-semibold tracking-tight">Gothic Lock Solver</h1>
+      <p class="text-slate-300">
+        Browser-only solver (BFS shortest path). Positions are <span class="font-mono">1..7</span>. Target is <span class="font-mono">all = 4</span>. Convention: <span class="font-mono">L = +1</span>, <span class="font-mono">R = -1</span>.
+      </p>
+    </header>
+
+    <section class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="rounded-2xl bg-slate-900/60 border border-slate-800 p-5">
+        <h2 class="text-lg font-semibold">Setup</h2>
+
+        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <label class="block">
+            <div class="text-sm text-slate-300">Number of disks (max 6)</div>
+            <input id="nDisks" type="number" min="1" max="6" value="5" class="mt-1 w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 font-mono" />
+          </label>
+
+          <label class="block">
+            <div class="text-sm text-slate-300">Start (comma-separated)</div>
+            <input id="start" type="text" value="1,3,1,1,3" class="mt-1 w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 font-mono" />
+            <div class="text-xs text-slate-400 mt-1">Example for N=5: <span class="font-mono">1,3,1,1,3</span></div>
+          </label>
+        </div>
+
+        <div class="mt-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-slate-200">Rules</h3>
+            <button id="loadExample" class="text-xs px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700">Load example</button>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">
+            One line per disk (1..N). Format: <span class="font-mono">i: 2+, 3-, 5-</span>. Empty means no couplings.
+          </p>
+          <textarea id="rules" rows="10" class="mt-2 w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 font-mono text-sm"
+            spellcheck="false">1: 2+, 3-, 5-
+2: 4-
+3:
+4:
+5: 3+, 4-</textarea>
+        </div>
+
+        <div class="mt-4 flex flex-wrap gap-3">
+          <button id="solveBtn" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold">Solve (shortest)</button>
+          <button id="stepBtn" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700">Validate solution step-by-step</button>
+          <button id="clearBtn" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700">Clear output</button>
+        </div>
+
+        <div id="error" class="mt-4 hidden rounded-xl border border-rose-900 bg-rose-950/40 p-3 text-rose-200 text-sm"></div>
+
+        <details class="mt-4 rounded-xl border border-slate-800 bg-slate-950/40 p-3">
+          <summary class="cursor-pointer text-sm text-slate-200">Notes / conventions</summary>
+          <div class="mt-2 text-sm text-slate-300 space-y-2">
+            <ul class="list-disc pl-5 space-y-1">
+              <li>Each move chooses a disk and applies either <span class="font-mono">L</span> (+1) or <span class="font-mono">R</span> (-1).</li>
+              <li>The chosen disk always moves. Coupled disks move by <span class="font-mono">sign * direction</span> where sign is +1 or -1.</li>
+              <li>A move is invalid if any affected disk goes outside <span class="font-mono">1..7</span>.</li>
+              <li>BFS explores states level-by-level, so the first solution found is minimal number of moves.</li>
+            </ul>
+          </div>
+        </details>
+      </div>
+
+      <div class="rounded-2xl bg-slate-900/60 border border-slate-800 p-5">
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-lg font-semibold">Output</h2>
+          <div class="text-xs text-slate-400">No installs. Works on GitHub Pages.</div>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 gap-4">
+          <div class="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
+            <div class="flex items-center justify-between">
+              <div class="text-sm text-slate-200 font-semibold">Solution</div>
+              <div id="meta" class="text-xs text-slate-400"></div>
+            </div>
+            <pre id="solution" class="mt-2 whitespace-pre-wrap font-mono text-sm text-slate-100"></pre>
+          </div>
+
+          <div class="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
+            <div class="text-sm text-slate-200 font-semibold">Simulation</div>
+            <div class="text-xs text-slate-400 mt-1">Applies the solution and prints each intermediate state.</div>
+            <pre id="sim" class="mt-2 whitespace-pre-wrap font-mono text-sm text-slate-100"></pre>
+          </div>
+        </div>
+
+        <details class="mt-4 rounded-xl border border-slate-800 bg-slate-950/40 p-3">
+          <summary class="cursor-pointer text-sm text-slate-200">Advanced: performance knobs</summary>
+          <div class="mt-2 text-sm text-slate-300 space-y-2">
+            <p>This is designed for up to 6 disks. Worst-case state space is $$7^6 = 117{,}649$$ states, which is fine in-browser.</p>
+            <p>If you ever add extra constraints or larger ranges, consider bidirectional BFS.</p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <footer class="mt-8 text-xs text-slate-500">
+      Tip: Commit this single file as <span class="font-mono">index.html</span> and enable GitHub Pages.
+    </footer>
+  </div>
+
+<script>
+  // Conventions fixed per your statement:
+  // L = +1, R = -1
+
+  const $ = (id) => document.getElementById(id);
+
+  function showError(msg) {
+    const el = $('error');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+  }
+
+  function clearError() {
+    const el = $('error');
+    el.textContent = '';
+    el.classList.add('hidden');
+  }
+
+  function parseStart(n) {
+    const raw = $('start').value.trim();
+    if (!raw) throw new Error('Start is empty.');
+    const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+    if (parts.length !== n) throw new Error(`Start must have exactly ${n} numbers.`);
+    const arr = parts.map(x => {
+      const v = Number(x);
+      if (!Number.isInteger(v)) throw new Error(`Start contains non-integer: "${x}"`);
+      return v;
+    });
+    for (let i = 0; i < n; i++) {
+      if (arr[i] < 1 || arr[i] > 7) throw new Error(`Start value out of range 1..7 at disk ${i+1}: ${arr[i]}`);
+    }
+    return arr;
+  }
+
+  function parseRules(n) {
+    // Returns Map<diskIndex0, Array<[diskIndex0, sign]>>
+    const text = $('rules').value.replace(/\r/g, '');
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+    const rules = new Map();
+
+    for (const line of lines) {
+      const m = line.match(/^(\d+)\s*:\s*(.*)$/);
+      if (!m) throw new Error(`Bad rule line: "${line}". Use format like: 1: 2+, 3-, 5-`);
+      const diskHuman = Number(m[1]);
+      if (!Number.isInteger(diskHuman) || diskHuman < 1 || diskHuman > n) {
+        throw new Error(`Rule disk out of range 1..${n}: ${m[1]}`);
+      }
+      const disk0 = diskHuman - 1;
+
+      const rhs = m[2].trim();
+      if (rhs === '') {
+        rules.set(disk0, []);
+        continue;
+      }
+
+      const items = rhs.split(',').map(s => s.trim()).filter(Boolean);
+      const aff = [];
+      for (const item of items) {
+        const mm = item.match(/^(\d+)\s*([+-])$/);
+        if (!mm) throw new Error(`Bad coupling token "${item}" in line "${line}". Expected like 4+ or 2-.`);
+        const targetHuman = Number(mm[1]);
+        if (!Number.isInteger(targetHuman) || targetHuman < 1 || targetHuman > n) {
+          throw new Error(`Coupled disk out of range 1..${n}: ${mm[1]} (in line "${line}")`);
+        }
+        const sign = (mm[2] === '+') ? 1 : -1;
+        const target0 = targetHuman - 1;
+        aff.push([target0, sign]);
+      }
+      rules.set(disk0, aff);
+    }
+
+    // Ensure every disk has an entry (optional)
+    for (let i = 0; i < n; i++) {
+      if (!rules.has(i)) rules.set(i, []);
+    }
+
+    return rules;
+  }
+
+  function applyMove(state, disk0, direction, rules) {
+    // state: Array<int>, disk0 in [0..n-1], direction in {-1,+1}
+    // always affects itself with sign=1
+    const affected = [[disk0, 1], ...(rules.get(disk0) || [])];
+    const next = state.slice();
+    for (const [d, sign] of affected) {
+      next[d] += sign * direction;
+      if (next[d] < 1 || next[d] > 7) return null;
+    }
+    return next;
+  }
+
+  function stateKey(state) {
+    // compact key for visited
+    return state.join(',');
+  }
+
+  function bfsSolve(start, rules) {
+    const n = start.length;
+    const target = Array(n).fill(4);
+
+    const q = [];
+    let qi = 0;
+
+    const visited = new Set();
+    const parent = new Map(); // key -> {prevKey, move:{disk,label}}
+
+    const startKey = stateKey(start);
+    visited.add(startKey);
+    q.push(start);
+
+    const moves = [
+      { direction: +1, label: 'L' },
+      { direction: -1, label: 'R' },
+    ];
+
+    while (qi < q.length) {
+      const cur = q[qi++];
+      const curKey = stateKey(cur);
+
+      let isTarget = true;
+      for (let i = 0; i < n; i++) {
+        if (cur[i] !== 4) { isTarget = false; break; }
+      }
+      if (isTarget) {
+        // reconstruct
+        const path = [];
+        let k = curKey;
+        while (k !== startKey) {
+          const info = parent.get(k);
+          path.push(info.move);
+          k = info.prevKey;
+        }
+        path.reverse();
+        return { path, visitedCount: visited.size };
+      }
+
+      for (let disk0 = 0; disk0 < n; disk0++) {
+        for (const mv of moves) {
+          const nxt = applyMove(cur, disk0, mv.direction, rules);
+          if (!nxt) continue;
+          const k = stateKey(nxt);
+          if (visited.has(k)) continue;
+          visited.add(k);
+          parent.set(k, { prevKey: curKey, move: { disk: disk0 + 1, dir: mv.label } });
+          q.push(nxt);
+        }
+      }
+    }
+
+    return { path: null, visitedCount: visited.size };
+  }
+
+  function formatSolution(path) {
+    if (!path) return 'No solution found.';
+    return path.map((m, idx) => `${String(idx+1).padStart(2,' ')}. ${m.disk}${m.dir}`).join('\n');
+  }
+
+  function simulate(start, path, rules) {
+    if (!path) return 'No simulation (no solution).';
+    const lines = [];
+    let state = start.slice();
+    lines.push(`Start: (${state.join(', ')})`);
+
+    for (let i = 0; i < path.length; i++) {
+      const { disk, dir } = path[i];
+      const disk0 = disk - 1;
+      const direction = (dir === 'L') ? +1 : -1;
+      const nxt = applyMove(state, disk0, direction, rules);
+      if (!nxt) {
+        lines.push(`Step ${i+1}: ${disk}${dir} -> INVALID (out of range)`);
+        return lines.join('\n');
+      }
+      state = nxt;
+      lines.push(`Step ${i+1}: ${disk}${dir} -> (${state.join(', ')})`);
+    }
+    lines.push(`Target: (${Array(state.length).fill(4).join(', ')})`);
+    return lines.join('\n');
+  }
+
+  function clearOutput() {
+    $('solution').textContent = '';
+    $('sim').textContent = '';
+    $('meta').textContent = '';
+  }
+
+  function loadExample() {
+    $('nDisks').value = 5;
+    $('start').value = '1,3,1,1,3';
+    $('rules').value = [
+      '1: 2+, 3-, 5-',
+      '2: 4-',
+      '3:',
+      '4:',
+      '5: 3+, 4-',
+    ].join('\n');
+    clearError();
+    clearOutput();
+  }
+
+  $('loadExample').addEventListener('click', loadExample);
+
+  $('clearBtn').addEventListener('click', () => {
+    clearError();
+    clearOutput();
+  });
+
+  $('solveBtn').addEventListener('click', () => {
+    clearError();
+    $('sim').textContent = '';
+    try {
+      const n = Number($('nDisks').value);
+      if (!Number.isInteger(n) || n < 1 || n > 6) throw new Error('Number of disks must be an integer between 1 and 6.');
+
+      const start = parseStart(n);
+      const rules = parseRules(n);
+
+      const t0 = performance.now();
+      const res = bfsSolve(start, rules);
+      const t1 = performance.now();
+
+      $('solution').textContent = formatSolution(res.path);
+      const len = res.path ? res.path.length : 0;
+      $('meta').textContent = res.path
+        ? `Moves: ${len} • Visited: ${res.visitedCount.toLocaleString()} • Time: ${(t1-t0).toFixed(1)} ms`
+        : `Visited: ${res.visitedCount.toLocaleString()} • Time: ${(t1-t0).toFixed(1)} ms`;
+    } catch (e) {
+      showError(e.message || String(e));
+    }
+  });
+
+  $('stepBtn').addEventListener('click', () => {
+    clearError();
+    try {
+      const n = Number($('nDisks').value);
+      if (!Number.isInteger(n) || n < 1 || n > 6) throw new Error('Number of disks must be an integer between 1 and 6.');
+      const start = parseStart(n);
+      const rules = parseRules(n);
+
+      // If no solution currently displayed, solve first
+      const res = bfsSolve(start, rules);
+      $('solution').textContent = formatSolution(res.path);
+      $('sim').textContent = simulate(start, res.path, rules);
+
+      const len = res.path ? res.path.length : 0;
+      $('meta').textContent = res.path
+        ? `Moves: ${len} • Visited: ${res.visitedCount.toLocaleString()}`
+        : `Visited: ${res.visitedCount.toLocaleString()}`;
+    } catch (e) {
+      showError(e.message || String(e));
+    }
+  });
+
+  // initial
+  clearOutput();
+</script>
+</body>
+</html>
