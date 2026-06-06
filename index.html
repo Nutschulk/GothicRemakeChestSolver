@@ -15,6 +15,7 @@
         Each disk value is the <span class="font-mono">pin position</span> from left-to-right: <span class="font-mono">left-most = 1</span>, <span class="font-mono">right-most = 7</span>.
         Target is <span class="font-mono">all = 4</span>. Convention: <span class="font-mono">L = +1</span>, <span class="font-mono">R = -1</span>.
         Rule notation like <span class="font-mono">2+</span> means “disk 2 moves in the <span class="italic">same</span> direction”; <span class="font-mono">3-</span> means it moves in the <span class="italic">opposite</span> direction.
+        <span class="block mt-2 text-slate-400">Note: More disks means a much bigger search space (BFS can get slow for large N).</span>
       </p>
     </header>
 
@@ -24,8 +25,8 @@
 
         <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label class="block">
-            <div class="text-sm text-slate-300">Number of disks (max 6)</div>
-            <input id="nDisks" type="number" min="1" max="6" value="5" class="mt-1 w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 font-mono" />
+            <div class="text-sm text-slate-300">Number of disks</div>
+            <input id="nDisks" type="number" min="1" value="5" class="mt-1 w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 font-mono" />
           </label>
 
           <label class="block">
@@ -97,8 +98,8 @@
         <details class="mt-4 rounded-xl border border-slate-800 bg-slate-950/40 p-3">
           <summary class="cursor-pointer text-sm text-slate-200">Advanced: performance knobs</summary>
           <div class="mt-2 text-sm text-slate-300 space-y-2">
-            <p>This is designed for up to 6 disks. Worst-case state space is $$7^6 = 117{,}649$$ states, which is fine in-browser.</p>
-            <p>If you ever add extra constraints or larger ranges, consider bidirectional BFS.</p>
+            <p>State space grows exponentially with the number of disks: $$7^N$$. BFS is great for small to medium N, but can get slow for large puzzles.</p>
+            <p>If you ever need bigger N, consider bidirectional BFS (meet in the middle) or an informed search (A*), depending on puzzle constraints.</p>
           </div>
         </details>
       </div>
@@ -321,7 +322,8 @@
     $('sim').textContent = '';
     try {
       const n = Number($('nDisks').value);
-      if (!Number.isInteger(n) || n < 1 || n > 6) throw new Error('Number of disks must be an integer between 1 and 6.');
+      if (!Number.isInteger(n) || n < 1) throw new Error('Number of disks must be an integer >= 1.');
+      if (n > 12) throw new Error('Too many disks for in-browser BFS (try N <= 12).');
 
       const start = parseStart(n);
       const rules = parseRules(n);
@@ -344,7 +346,8 @@
     clearError();
     try {
       const n = Number($('nDisks').value);
-      if (!Number.isInteger(n) || n < 1 || n > 6) throw new Error('Number of disks must be an integer between 1 and 6.');
+      if (!Number.isInteger(n) || n < 1) throw new Error('Number of disks must be an integer >= 1.');
+      if (n > 12) throw new Error('Too many disks for in-browser BFS (try N <= 12).');
       const start = parseStart(n);
       const rules = parseRules(n);
 
