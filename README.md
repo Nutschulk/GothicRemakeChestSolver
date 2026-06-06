@@ -14,7 +14,7 @@ Small browser-only solver for the Gothic Remake chest/lock puzzle.
 
 ### 1) Choose number of disks
 
-Set **Number of disks** to your puzzle size (max 6).
+Set **Number of disks** to your puzzle size.
 
 ### 2) Enter the start state
 
